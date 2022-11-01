@@ -14,23 +14,23 @@ tools.
 In December of 2021, a draft specification of a text-based xtUML based on MASL
 was written and distributed. TODO ref.
 
-In the Sprint of 2022, the BridgePoint team introduced a feature to persist
+In the Spring of 2022, the BridgePoint team introduced a feature to persist
 xtUML graphical layout in a textual format. TODO ref.
 
-In October of 2022, Levi Starrett gave a presentation at the annual
-Shlaer-Mellor Days conference outlining a proposal for such a language and a
-roadmap to achieve the goal. TODO refs. This note is written to analyze a subset of the
-roadmap to identify requirements and challenges related to the project.
+In October of 2022, a presentation was shared at the annual Shlaer-Mellor Days
+conference outlining a proposal for such a language and a roadmap to achieve the
+goal. TODO refs. This note is written to analyze a subset of the roadmap to
+identify requirements and challenges related to the project.
 
 == 2 Introduction and Background
 
 Before going on, the reader should read the original specification (TODO ref),
 and watch the presentation video (TODO ref).
 
-image::roadmap.png[roadmap]
+Below is shown a slide from the Shaler-Mellor days presentation laying out a
+roadmap for this work. This note will address the roadmap items circled in red.
 
-This note will focus on the roadmap items circled in blue. Particular emphasis
-will be put on the items circled in red.
+image::roadmap.png[roadmap]
 
 == 3 Requirements
 
@@ -144,17 +144,102 @@ shall be updated to be compliant with the specification defined here.
 The BridgePoint marking editor shall be updated to be compliant with the
 specification of marking data defined here.
 
-=== 3.3 Meta-models
-
-TODO
-
-=== 3.4 Platform Independent xtUML Persistence Domain
-
-TODO
-
 == 4 Analysis
 
+=== 4.1 Survey of other languages and standards
+
+As mentioned in the requirements section, it was deemed prudent to do some
+research as part of this analysis to find good examples of languages/standards
+with excellent documentation and community coordination. The goal is to find a
+format which strikes a good balance between RFC-style technical specification
+and more reader-friendly reference manual. An excellent solution should have the
+following qualities:
+
+. Approachable for technical and non-technical readers
+. Complete enough that no other resource is necessary
+. Well indexed such that answers to specific questions can be found quickly
+. Versioned such that logical chunks of the specification can be referenced
+  specifically
+. Set up with a clear process for making changes and improvements
+
+Below is the results of the survey:
+
 TODO
+
+=== 4.2 BridgePoint Support
+
+==== 4.2.1 High level strategy
+
+The existing graphical persistence as text can function as the proof of concept
+for this work. Xtext was chosen as the tool to generate load/persist structures
+from the grammar for the language. A Java class is provided to handle population
+of the OOA of graphics from the generated EMF model. Another Java class is
+provided to do the opposite function of populating the EMF model from the OOA of
+graphics. This strategy has proven to be effective, however it couples the
+application tightly to Java, Eclipse, and Xtext.
+
+Another strategy that could be used for this work is to extend the existing MASL
+to xtUML and xtUML to MASL converters (`masl2xtuml` and `xtuml2masl`). These are
+implemented as independent models and generated with MC-3020 to compiled
+executables. The benefit of this approach is looser coupling of the load/persist
+process. The downside is that it makes the integration with Eclipse more brittle
+and would run into problems with loading/persisting individual files and
+watching for file changes.
+
+==== 4.2.2 Other challenges
+
+There are a few other notable challenges that have already been identified.
+
+===== 4.2.2.1 Interfacing with informal diagrams
+
+As noted in the requirements, the specification will not cover the informal
+diagrams. This means that in order to maintain support in BridgePoint for these
+model types, the old SQL insert statement based persistence must be used for
+these diagrams. A solution must be found to handle the case where relationships
+bridge from these classes to classes in the executable part of the model.
+
+===== 4.2.2.2 Creating instances from scratch
+
+One major difference between the work that has been done with graphics and this
+work is the existence of the graphics reconciliation system. The graphics
+reconciler knows how to create and relate an instance population of graphical
+elements using only the exiting instance population of semantic instances (e.g.
+a new shape is created for every class; a new connector is created for every
+relationship). The textual load works by first letting the graphics reconciler
+run. After it completes, the instance population is queried and the attributes
+are updated according to the data parsed from text (position, size, color, etc.)
+
+By contrast, there is no such reconciler for semantic instances. All of the work
+of creating and relating the instance population based on the parsed text must
+be done from scratch.
+
+===== 4.2.2.3 Updating the current graphics format
+
+At the moment, the textual graphics is implemented as a custom language. It is
+likely that the final specification for graphical layout data will be a schema
+overlaid on an existing human-readable configuration format like YAML. The
+implementation will need to be updated to support this format.
+
+===== 4.2.2.4 Persistence order
+
+As one of the major goals of this work is to make the underlying model data more
+human-readable, diffable, and even editable, it is more important than ever to
+pay attention to order in which elements appear in a file. If a small change
+results in a non-functional change in the order of elements, diffs between
+versions of a file can get cluttered with non-functional changes. The order must
+be stable.
+
+Sorting is one way to provide consistent ordering. This is an acceptable
+solution, but does not allow the user to change the order in the file.
+
+Adding ordering relationships in the model would allow the exact file order to
+remain consistent, however it is more difficult and requires changes to the
+meta-models.
+
+MC-Java uses Java `ArrayList`s under the hood to maintain instance lists.
+Because of this architectural reality, instances are maintained in creation
+order. Relying on this property of the architecture to maintain file order may
+be "good enough" for now.
 
 == 5 Work Required
 
